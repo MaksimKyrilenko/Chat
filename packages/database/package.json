@@ -1,0 +1,20 @@
+{
+  "name": "@ultrachat/database",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "migrate": "ts-node src/migrations/run.ts",
+    "seed": "ts-node src/seeds/run.ts"
+  },
+  "dependencies": {
+    "mongoose": "^8.0.0",
+    "mysql2": "^3.6.0",
+    "typeorm": "^0.3.17"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0"
+  }
+}

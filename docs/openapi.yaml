@@ -1,0 +1,678 @@
+openapi: 3.0.3
+info:
+  title: UltraChat API
+  description: Modern Web Messenger API
+  version: 1.0.0
+  contact:
+    name: UltraChat Team
+    email: api@ultrachat.example.com
+
+servers:
+  - url: https://api.ultrachat.example.com
+    description: Production
+  - url: http://localhost:3000
+    description: Development
+
+tags:
+  - name: auth
+    description: Authentication endpoints
+  - name: users
+    description: User management
+  - name: chats
+    description: Chat management
+  - name: messages
+    description: Messaging
+  - name: files
+    description: File uploads
+  - name: calls
+    description: Voice/Video calls
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: Register new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email or username already exists
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Login user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/users/{userId}:
+    get:
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/search:
+    get:
+      tags: [users]
+      summary: Search users
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /api/chats:
+    get:
+      tags: [chats]
+      summary: Get user's chats
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of chats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatPreview'
+
+    post:
+      tags: [chats]
+      summary: Create new chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChatRequest'
+      responses:
+        '201':
+          description: Chat created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+
+  /api/chats/{chatId}:
+    get:
+      tags: [chats]
+      summary: Get chat details
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Chat details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat'
+
+  /api/chats/{chatId}/messages:
+    get:
+      tags: [messages]
+      summary: Get chat messages
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: before
+          in: query
+          description: Message ID to fetch messages before
+          schema:
+            type: string
+        - name: after
+          in: query
+          description: Message ID to fetch messages after
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
+  /api/messages/{messageId}/reactions:
+    post:
+      tags: [messages]
+      summary: Add reaction to message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emoji]
+              properties:
+                emoji:
+                  type: string
+                  example: "👍"
+      responses:
+        '200':
+          description: Reaction added
+
+    delete:
+      tags: [messages]
+      summary: Remove reaction from message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: emoji
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reaction removed
+
+  /api/files/upload-url:
+    post:
+      tags: [files]
+      summary: Get presigned upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, mimeType, size]
+              properties:
+                filename:
+                  type: string
+                mimeType:
+                  type: string
+                size:
+                  type: integer
+      responses:
+        '200':
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploadId:
+                    type: string
+                  uploadUrl:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+
+  /api/messages/search:
+    get:
+      tags: [messages]
+      summary: Search messages
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: chatId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hits:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MessageSearchResult'
+                  total:
+                    type: integer
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, username, password]
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[a-zA-Z0-9_]+$'
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+          maxLength: 100
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        deviceId:
+          type: string
+        deviceName:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        tokenType:
+          type: string
+          enum: [Bearer]
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+        tokenType:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+        bio:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, away, dnd]
+        lastSeen:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    Chat:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [direct, group, channel, community]
+        name:
+          type: string
+        description:
+          type: string
+        avatar:
+          type: string
+        ownerId:
+          type: string
+        settings:
+          type: object
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMember'
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatPreview:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        name:
+          type: string
+        avatar:
+          type: string
+        lastMessage:
+          type: object
+          properties:
+            content:
+              type: string
+            senderId:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+        unreadCount:
+          type: integer
+
+    ChatMember:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, moderator, member]
+        joinedAt:
+          type: string
+          format: date-time
+
+    CreateChatRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [direct, group, channel]
+        name:
+          type: string
+        description:
+          type: string
+        memberIds:
+          type: array
+          items:
+            type: string
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        chatId:
+          type: string
+        senderId:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+          enum: [text, image, video, audio, file, voice, sticker, system, call]
+        replyToId:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reaction'
+        mentions:
+          type: array
+          items:
+            type: string
+        isEdited:
+          type: boolean
+        isDeleted:
+          type: boolean
+        isPinned:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [image, video, audio, file, voice]
+        url:
+          type: string
+        filename:
+          type: string
+        mimeType:
+          type: string
+        size:
+          type: integer
+        width:
+          type: integer
+        height:
+          type: integer
+        duration:
+          type: number
+        thumbnailUrl:
+          type: string
+
+    Reaction:
+      type: object
+      properties:
+        emoji:
+          type: string
+        userIds:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+
+    MessageSearchResult:
+      type: object
+      properties:
+        message:
+          $ref: '#/components/schemas/Message'
+        chatId:
+          type: string
+        chatName:
+          type: string
+        highlights:
+          type: array
+          items:
+            type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode:
+                type: integer
+                example: 400
+              message:
+                type: string
+              error:
+                type: string
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode:
+                type: integer
+                example: 401
+              message:
+                type: string
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode:
+                type: integer
+                example: 404
+              message:
+                type: string
