@@ -8,6 +8,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/shared/tsconfig.json ./packages/shared/
 COPY packages/database/package.json ./packages/database/
+COPY packages/database/tsconfig.json ./packages/database/
 COPY apps/services/auth/package.json ./apps/services/auth/
 
 # Install pnpm and dependencies
@@ -21,6 +22,7 @@ COPY apps/services/auth ./apps/services/auth
 
 # Build
 RUN pnpm --filter @ultrachat/shared build
+RUN pnpm --filter @ultrachat/database build
 RUN pnpm --filter @ultrachat/auth-service build
 
 # Production stage
