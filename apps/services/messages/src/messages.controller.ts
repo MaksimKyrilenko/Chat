@@ -30,7 +30,10 @@ export class MessagesController {
       mentions?: string[];
     },
   ) {
-    return this.messagesService.create(data);
+    console.log('[MessagesController] Received message.send from NATS:', data);
+    const result = await this.messagesService.create(data);
+    console.log('[MessagesController] Message created:', result._id);
+    return result;
   }
 
   @MessagePattern(NATS_SUBJECTS.MESSAGE_GET)

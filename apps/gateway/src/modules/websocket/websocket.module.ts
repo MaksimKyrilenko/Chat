@@ -4,6 +4,7 @@ import { ChatGateway } from './chat.gateway';
 import { WebSocketController } from './websocket.controller';
 import { PresenceService } from './presence.service';
 import { RedisService } from './redis.service';
+import { WsAuthGuard } from './guards/ws-auth.guard';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -20,7 +21,7 @@ import { AuthModule } from '../auth/auth.module';
     ]),
   ],
   controllers: [WebSocketController],
-  providers: [ChatGateway, PresenceService, RedisService],
+  providers: [ChatGateway, PresenceService, RedisService, WsAuthGuard],
   exports: [ChatGateway, PresenceService],
 })
 export class WebSocketModule {}

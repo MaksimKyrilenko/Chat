@@ -13,6 +13,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
 import { PresenceService } from './presence.service';
 import { WsAuthGuard } from './guards/ws-auth.guard';
+import { AuthService } from '../auth/auth.service';
 
 // WebSocket Events (local copy)
 const WS_EVENTS = {
@@ -44,11 +45,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     @Inject('NATS_SERVICE') private readonly natsClient: ClientProxy,
     private readonly presenceService: PresenceService,
+    private readonly authService: AuthService,
   ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
-      // Auth is handled by middleware, user should be attached
+      // Extract and validate token
+      const token = client.handshake.auth?.token || 
+                    client.handshake.headers.authorization?.replace('Bearer ', '') ||
+                    client.handshake.query?.token as string;
+
+      if (!token) {
+        console.log('No token provided, disconnecting');
+        client.disconnect();
+        return;
+      }
+
+      const payload = await this.authService.validateToken(token);
+      client.user = payload as any;
+
       const userId = client.user?.sub;
       if (!userId) {
         client.disconnect();
@@ -102,6 +117,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const userId = client.user.sub;
 
+    console.log('[ChatGateway] Received message:send from user:', userId, 'data:', data);
+
     // Send to messages service via NATS
     this.natsClient.emit(NATS_SUBJECTS.MESSAGE_SEND, {
       chatId: data.chatId,
@@ -110,6 +127,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       type: data.type || 'text',
       replyToId: data.replyToId,
     });
+
+    console.log('[ChatGateway] Emitted message.send to NATS');
   }
 
   @SubscribeMessage('typing:start')
@@ -163,6 +182,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: { chatId: string },
   ) {
+    console.log(`[ChatGateway] User ${client.user.sub} joining chat room: chat:${data.chatId}`);
     client.join(`chat:${data.chatId}`);
   }
 
@@ -177,11 +197,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Methods called by other services via NATS
   async emitToChat(chatId: string, event: string, data: any) {
-    this.server.to(`chat:${chatId}`).emit(event, data);
+    const room = `chat:${chatId}`;
+    const sockets = await this.server.in(room).fetchSockets();
+    console.log(`[ChatGateway] emitToChat - room: ${room}, sockets in room: ${sockets.length}, event: ${event}`);
+    this.server.to(room).emit(event, data);
   }
 
   async emitToUser(userId: string, event: string, data: any) {
-    this.server.to(`user:${userId}`).emit(event, data);
+    const room = `user:${userId}`;
+    const sockets = await this.server.in(room).fetchSockets();
+    console.log(`[ChatGateway] emitToUser - room: ${room}, sockets in room: ${sockets.length}, event: ${event}`);
+    this.server.to(room).emit(event, data);
   }
 
   private async getUserChats(userId: string): Promise<string[]> {

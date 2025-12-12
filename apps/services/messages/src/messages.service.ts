@@ -51,12 +51,16 @@ export class MessagesService {
     // Index in ElasticSearch
     await this.searchService.indexMessage(message);
 
+    console.log('[MessagesService] Emitting ws.broadcast for message:', message._id);
+
     // Emit event for WebSocket broadcast
     this.natsClient.emit('ws.broadcast', {
       room: `chat:${dto.chatId}`,
       event: WS_EVENTS.MESSAGE_NEW,
       data: { message, chatId: dto.chatId },
     });
+
+    console.log('[MessagesService] ws.broadcast emitted to room:', `chat:${dto.chatId}`);
 
     // Update chat's lastMessageAt
     this.natsClient.emit('chat.update.lastMessage', {

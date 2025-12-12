@@ -13,8 +13,8 @@ export const useSocketStore = defineStore('socket', () => {
 
     if (socket.value?.connected) return;
 
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
-    socket.value = io(`${wsUrl}/chat`, {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    socket.value = io(`${apiUrl}/chat`, {
       auth: {
         token: authStore.tokens?.accessToken,
       },
@@ -32,6 +32,10 @@ export const useSocketStore = defineStore('socket', () => {
     socket.value.on('disconnect', () => {
       connected.value = false;
       console.log('WebSocket disconnected');
+    });
+
+    socket.value.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error.message);
     });
 
     // Message events
