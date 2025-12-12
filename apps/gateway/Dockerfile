@@ -32,10 +32,24 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Copy package files for production install
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/apps/gateway/package.json ./apps/gateway/
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/
+COPY --from=builder /app/packages/database/package.json ./packages/database/
+
+# Install pnpm and production dependencies
+RUN npm install -g pnpm
+RUN pnpm install --prod --frozen-lockfile
+
 # Copy built files
-COPY --from=builder /app/apps/gateway/dist ./dist
-COPY --from=builder /app/apps/gateway/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/gateway/dist ./apps/gateway/dist
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/database/dist ./packages/database/dist
+
+WORKDIR /app/apps/gateway
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
