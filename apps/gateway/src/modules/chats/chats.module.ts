@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ChatsController } from './chats.controller';
 import { ChatsService } from './chats.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule,
     ClientsModule.register([
       {
         name: 'NATS_SERVICE',

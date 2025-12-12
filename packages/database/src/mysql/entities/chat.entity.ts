@@ -7,9 +7,7 @@ import {
   Index,
   ManyToOne,
   JoinColumn,
-  OneToMany,
 } from 'typeorm';
-import { UserEntity } from './user.entity';
 
 @Entity('chats')
 export class ChatEntity {
@@ -56,9 +54,7 @@ export class ChatEntity {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToOne(() => UserEntity)
-  @JoinColumn({ name: 'owner_id' })
-  owner: UserEntity;
+  // Note: owner relation is handled at service level to avoid circular dependencies
 }
 
 @Entity('chat_members')
@@ -104,9 +100,7 @@ export class ChatMemberEntity {
   @JoinColumn({ name: 'chat_id' })
   chat: ChatEntity;
 
-  @ManyToOne(() => UserEntity)
-  @JoinColumn({ name: 'user_id' })
-  user: UserEntity;
+  // Note: user relation is handled at service level to avoid circular dependencies
 }
 
 @Entity('chat_invites')
