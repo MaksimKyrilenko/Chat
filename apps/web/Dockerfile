@@ -1,6 +1,8 @@
 # Build stage
 FROM node:20-alpine AS builder
 
+ARG VITE_API_URL=http://localhost:3000
+
 WORKDIR /app
 
 # Copy package files
@@ -14,7 +16,8 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY apps/web ./apps/web
 
-# Build
+# Build with env variable
+ENV VITE_API_URL=$VITE_API_URL
 RUN pnpm --filter @ultrachat/web build
 
 # Production stage
