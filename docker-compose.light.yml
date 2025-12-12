@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  # ===================
+  # Infrastructure (минимум)
+  # ===================
+  mysql:
+    image: mysql:8.0
+    container_name: ultrachat-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ultrachat_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ultrachat}
+      MYSQL_USER: ${MYSQL_USER:-ultrachat}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ultrachat_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infrastructure/docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password --max_connections=100
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  mongodb:
+    image: mongo:6
+    container_name: ultrachat-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-ultrachat}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-ultrachat_pass}
+      MONGO_INITDB_DATABASE: ultrachat
+    volumes:
+      - mongodb_data:/data/db
+      - ./infrastructure/docker/mongodb/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    ports:
+      - "27017:27017"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    container_name: ultrachat-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-ultrachat_redis} --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  nats:
+    image: nats:2-alpine
+    container_name: ultrachat-nats
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+
+  # ===================
+  # Application Services
+  # ===================
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    container_name: ultrachat-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - NATS_URL=nats://nats:4222
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-ultrachat_redis}@redis:6379
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080}
+    depends_on:
+      - nats
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/services/auth/Dockerfile
+    container_name: ultrachat-auth
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NATS_URL=nats://nats:4222
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER:-ultrachat}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-ultrachat_pass}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-ultrachat}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+    depends_on:
+      - mysql
+      - nats
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  messages-service:
+    build:
+      context: .
+      dockerfile: apps/services/messages/Dockerfile
+    container_name: ultrachat-messages
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NATS_URL=nats://nats:4222
+      - MONGODB_URI=mongodb://${MONGO_USER:-ultrachat}:${MONGO_PASSWORD:-ultrachat_pass}@mongodb:27017/ultrachat?authSource=admin
+    depends_on:
+      - mongodb
+      - nats
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+    container_name: ultrachat-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - gateway
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+
+volumes:
+  mysql_data:
+  mongodb_data:
+  redis_data:
