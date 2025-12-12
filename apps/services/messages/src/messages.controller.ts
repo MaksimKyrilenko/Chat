@@ -17,7 +17,7 @@ const NATS_SUBJECTS = {
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
-  @MessagePattern(NATS_SUBJECTS.MESSAGE_SEND)
+  @EventPattern(NATS_SUBJECTS.MESSAGE_SEND)
   async sendMessage(
     @Payload()
     data: {

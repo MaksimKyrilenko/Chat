@@ -90,11 +90,14 @@ export class MessagesService {
       query._id = { $gt: new Types.ObjectId(after) };
     }
 
-    return this.messageModel
+    const messages = await this.messageModel
       .find(query)
       .sort({ createdAt: -1 })
       .limit(Math.min(limit, 100))
       .exec();
+
+    // Return in chronological order (oldest first)
+    return messages.reverse();
   }
 
   async update(id: string, userId: string, dto: UpdateMessageDto): Promise<MessageDocument> {

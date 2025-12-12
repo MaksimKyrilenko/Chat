@@ -29,6 +29,11 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('refreshToken', response.data.refreshToken);
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
 
+      // Connect WebSocket after login
+      const { useSocketStore } = await import('./socket');
+      const socketStore = useSocketStore();
+      socketStore.connect();
+
       return response.data;
     } finally {
       loading.value = false;
@@ -51,6 +56,11 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('refreshToken', response.data.refreshToken);
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
 
+      // Connect WebSocket after registration
+      const { useSocketStore } = await import('./socket');
+      const socketStore = useSocketStore();
+      socketStore.connect();
+
       return response.data;
     } finally {
       loading.value = false;
@@ -59,6 +69,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
+      // Disconnect WebSocket
+      const { useSocketStore } = await import('./socket');
+      const socketStore = useSocketStore();
+      socketStore.disconnect();
+
       if (tokens.value?.refreshToken) {
         await api.post('/api/auth/logout', {
           refreshToken: tokens.value.refreshToken,

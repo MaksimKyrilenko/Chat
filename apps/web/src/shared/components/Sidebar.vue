@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
+import NewChatModal from './NewChatModal.vue';
 
 defineProps<{
   collapsed: boolean;
@@ -16,6 +17,12 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const chatStore = useChatStore();
+
+const showNewChatModal = ref(false);
+
+onMounted(() => {
+  chatStore.fetchChats();
+});
 
 const user = computed(() => authStore.user);
 const chats = computed(() => chatStore.chatList);
@@ -56,8 +63,8 @@ async function handleLogout() {
       </button>
     </div>
 
-    <!-- Search -->
-    <div v-if="!collapsed" class="p-3">
+    <!-- Search and New Chat -->
+    <div v-if="!collapsed" class="p-3 space-y-2">
       <div class="relative">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -68,6 +75,26 @@ async function handleLogout() {
           class="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
       </div>
+      <button
+        class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors"
+        @click="showNewChatModal = true"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        New Chat
+      </button>
+    </div>
+    <div v-else class="p-2">
+      <button
+        class="w-full p-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+        @click="showNewChatModal = true"
+        title="New Chat"
+      >
+        <svg class="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
     </div>
 
     <!-- Chat list -->
@@ -108,8 +135,17 @@ async function handleLogout() {
       <div v-if="chats.length === 0 && !collapsed" class="text-center py-8 text-slate-500">
         <p>No chats yet</p>
         <p class="text-sm">Start a conversation!</p>
+        <button
+          class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm font-medium transition-colors"
+          @click="showNewChatModal = true"
+        >
+          Create your first chat
+        </button>
       </div>
     </nav>
+
+    <!-- New Chat Modal -->
+    <NewChatModal :open="showNewChatModal" @close="showNewChatModal = false" />
 
     <!-- User section -->
     <div class="p-3 border-t border-slate-800">

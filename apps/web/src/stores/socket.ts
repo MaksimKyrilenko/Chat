@@ -13,7 +13,8 @@ export const useSocketStore = defineStore('socket', () => {
 
     if (socket.value?.connected) return;
 
-    socket.value = io('/chat', {
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+    socket.value = io(`${wsUrl}/chat`, {
       auth: {
         token: authStore.tokens?.accessToken,
       },

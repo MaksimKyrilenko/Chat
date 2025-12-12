@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Inject, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { PresenceService } from './presence.service';
 import { WsAuthGuard } from './guards/ws-auth.guard';
 
@@ -184,8 +185,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private async getUserChats(userId: string): Promise<string[]> {
-    // This would call chat service via NATS
-    return [];
+    try {
+      const chats = await firstValueFrom(
+        this.natsClient.send('chat.list', { userId }).pipe(timeout(5000)),
+      );
+      return chats.map((chat: any) => chat.id);
+    } catch {
+      return [];
+    }
   }
 
   private broadcastPresence(userId: string, status: string) {

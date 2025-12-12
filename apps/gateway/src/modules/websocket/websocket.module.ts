@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ChatGateway } from './chat.gateway';
+import { WebSocketController } from './websocket.controller';
 import { PresenceService } from './presence.service';
 import { RedisService } from './redis.service';
 import { AuthModule } from '../auth/auth.module';
@@ -18,6 +19,7 @@ import { AuthModule } from '../auth/auth.module';
       },
     ]),
   ],
+  controllers: [WebSocketController],
   providers: [ChatGateway, PresenceService, RedisService],
   exports: [ChatGateway, PresenceService],
 })

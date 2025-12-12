@@ -2,11 +2,20 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Connect NATS microservice for receiving events
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.NATS,
+    options: {
+      servers: [process.env.NATS_URL || 'nats://localhost:4222'],
+    },
+  });
 
   // Security
   app.use(helmet());
@@ -43,6 +52,9 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
+
+  // Start all microservices
+  await app.startAllMicroservices();
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

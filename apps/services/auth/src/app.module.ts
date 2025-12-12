@@ -4,7 +4,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
+import { ChatsController } from './chats.controller';
+import { ChatsService } from './chats.service';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
 import { UserEntity, SessionEntity, UserSettingsEntity } from './entities';
+import { ChatEntity, ChatMemberEntity } from '@ultrachat/database';
 import { RedisModule } from './redis/redis.module';
 
 @Module({
@@ -24,16 +29,16 @@ import { RedisModule } from './redis/redis.module';
         username: config.get('MYSQL_USER', 'ultrachat'),
         password: config.get('MYSQL_PASSWORD', 'ultrachat_pass'),
         database: config.get('MYSQL_DATABASE', 'ultrachat'),
-        entities: [UserEntity, SessionEntity, UserSettingsEntity],
+        entities: [UserEntity, SessionEntity, UserSettingsEntity, ChatEntity, ChatMemberEntity],
         synchronize: config.get('NODE_ENV') === 'development',
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),
 
-    TypeOrmModule.forFeature([UserEntity, SessionEntity, UserSettingsEntity]),
+    TypeOrmModule.forFeature([UserEntity, SessionEntity, UserSettingsEntity, ChatEntity, ChatMemberEntity]),
     RedisModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService, TokenService],
+  controllers: [AuthController, ChatsController, UsersController],
+  providers: [AuthService, TokenService, ChatsService, UsersService],
 })
 export class AppModule {}
